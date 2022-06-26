@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+
+  webserver:
+    image: nginx
+    volumes:
+      - ../docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
+      - ../:/var/www
+    ports:
+      - "889:80"
+    depends_on:
+      - php-fpm
+
+  php-fpm:
+      container_name: php-fpm-observer
+      build:
+          context: ./../
+          dockerfile: ./docker/php-fpm/Dockerfile
+      environment:
+          XDEBUG_CONFIG: remote_enable=1 remote_host=host.docker.internal profiler_enable=0
+          PHP_IDE_CONFIG: "serverName=Docker"
+      extra_hosts:
+          host.docker.internal: 172.17.0.1
+      expose:
+          - "9000"
+      volumes:
+          - /var/www/vendor/
+          - ./../:/var/www/
+
+  node-watch:
+      image: node:14-alpine
+      tty: true
+      volumes:
+          - ../:/app
+      working_dir: /app
+  db:
+      image: mysql:8.0
+      cap_add:
+          - SYS_NICE
+      restart: always
+      environment:
+          - MYSQL_DATABASE=blog
+          - MYSQL_ROOT_PASSWORD=root
+      ports:
+          - '3306:3306'
+      volumes:
+          - db:/var/lib/mysql
+          - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
+volumes:
+    db:
+        driver: local
