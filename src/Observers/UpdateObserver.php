@@ -1,20 +1,21 @@
 <?php
 
+namespace App\Observers;
 
-class UpdateObserver implements SplSubject
+use App\Entity;
+use App\EntityManager;
+use SplObserver;
+use SplSubject;
+
+class UpdateObserver implements SplObserver
 {
-    public function attach(SplObserver $observer)
-    {
-        // TODO: Implement attach() method.
-    }
 
-    public function detach(SplObserver $observer)
-    {
-        // TODO: Implement detach() method.
-    }
 
-    public function notify()
+    public function update(SplSubject $subject, string $event = null, $data = null)
     {
-        // TODO: Implement notify() method.
+        $myfile = fopen("log.txt", "a") or die("Unable to open file!");
+        $txt = $event . " " . serialize($data->toArray()) . PHP_EOL;
+        fwrite($myfile, $txt);
+        fclose($myfile);
     }
 }

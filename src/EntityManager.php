@@ -7,6 +7,8 @@ namespace App;
 //This class managed in-memory entities and commmunicates with the storage class (DataStore in our case).
 use SplObjectStorage;
 use SplSubject;
+use App\InventoryItem;
+use Symfony\Component\Mailer\MailerInterface;
 
 class EntityManager implements SplSubject
 {
@@ -25,7 +27,9 @@ class EntityManager implements SplSubject
 
     private $_observers = null;
 
-    public function __construct($storePath)
+    private $_mailer = null;
+
+    public function __construct(string $storePath)
     {
         $this->_observers = new SplObjectStorage();
 
@@ -36,28 +40,31 @@ class EntityManager implements SplSubject
         $itemTypes = $this->_dataStore->getItemTypes();
         foreach ($itemTypes as $itemType)
         {
-            $itemKeys = $this->_dataStore->getItemKeys();
+            $itemKeys = $this->_dataStore->getItemKeys($itemType);
             foreach ($itemKeys as $itemKey) {
                 $entity = $this->create($itemType, $this->_dataStore->get($itemType, $itemKey), true);
             }
         }
     }
 
-    public function attach(\SplObserver $observer) {
+    public function attach(\SplObserver $observer): void
+    {
         $this->_observers->attach($observer);
     }
 
-    public function detach(\SplObserver $observer) {
+    public function detach(\SplObserver $observer): void
+    {
         $this->_observers->detach($observer);
     }
 
-    public function notify() {
+    public function notify(string $event = "*", $data = null): void
+    {
         foreach ($this->_observers as $observer) {
-            $observer->update($this);
+            $observer->update($this, $event, $data);
         }
     }
     //create an entity
-    public function create($entityName, $data, $fromStore = false)
+    public function create(string $entityName, array $data, bool $fromStore = false): Entity
     {
         $entity = new $entityName;
         $entity->_entityName = $entityName;
@@ -76,7 +83,7 @@ class EntityManager implements SplSubject
     }
 
     //update
-    public function update($entity, $newData)
+    public function update(Entity $entity, array $newData): Entity
     {
         if ($newData === $entity->_data) {
             //Nothing to do
@@ -94,26 +101,22 @@ class EntityManager implements SplSubject
             $this->_entityPrimaryToId[$newPrimary] = $entity->$id;
         }
         $entity->_data = $newData;
-        $this->notify();
+        $this->notify('update', $entity);
         return $entity;
     }
 
     //Delete
-    public function delete($entity)
+    public function delete(Entity $entity): bool
     {
         $id = $entity->_id;
-        $entity->_id = null;
-        $entity->_data = null;
-        $entity->_em = null;
         $this->_entities[$id] = null;
         $primary = $entity->{$entity->getPrimary()};
         $this->_dataStore->delete(get_class($entity),$primary);
-        unset($this->_entityIdToPrimary[$id]);
-        unset($this->_entityPrimaryToId[$primary]);
-        return null;
+        unset($this->_entityIdToPrimary[$id], $this->_entityPrimaryToId[$primary]);
+        return isset($this->_entityIdToPrimary[$id], $this->_entityPrimaryToId[$primary]);
     }
 
-    public function findByPrimary($entity, $primary)
+    public function findByPrimary(Entity $entity, string $primary): ?string
     {
         if (isset($this->_entityPrimaryToId[$primary])) {
             $id = $this->_entityPrimaryToId[$primary];
@@ -124,11 +127,16 @@ class EntityManager implements SplSubject
     }
 
     //Update the datastore to update itself and save.
-    public function updateStore() {
+    public function updateStore(): void {
         foreach($this->_entitySaveList as $id) {
             $entity = $this->_entities[$id];
             $this->_dataStore->set(get_class($entity),$entity->{$entity->getPrimary()},$entity->_data);
         }
         $this->_dataStore->save();
+    }
+
+    public function getMailer()
+    {
+        return $this->_mailer;
     }
 }

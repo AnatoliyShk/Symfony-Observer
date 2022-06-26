@@ -10,6 +10,7 @@ class Helper
     public static function getLastError()
     {
         $errorInfo = error_get_last();
+        $errorString = "";
         if($errorInfo !== null) {
             $errorString = " Error type {$errorInfo['type']}, {$errorInfo['message']} on line {$errorInfo['line']} of " .
                 "{$errorInfo['file']}. ";
