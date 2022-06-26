@@ -1,0 +1,8 @@
+controllers:
+    resource: ../src/Controller/
+    type: attribute
+
+test:
+    path: /test
+    # the controller value has the format 'controller_class::method_name'
+    controller: App\Controller\TestController::test
