@@ -38,14 +38,6 @@ class EntityManager implements SplSubject
 
         $this->attach(new InventoryObserver());
 
-        $itemTypes = $this->_dataStore->getItemTypes();
-        foreach ($itemTypes as $itemType)
-        {
-            $itemKeys = $this->_dataStore->getItemKeys($itemType);
-            foreach ($itemKeys as $itemKey) {
-                $entity = $this->create($itemType, $this->_dataStore->get($itemType, $itemKey), true);
-            }
-        }
     }
 
     public function attach(\SplObserver $observer): void
@@ -71,13 +63,16 @@ class EntityManager implements SplSubject
         $entity->_entityName = $entityName;
         $entity->_data = $data;
         $id = $entity->_id = $this->_nextId++;
-        $this->_entities[$id] = $entity;
-        $primary = $data[$entity->getPrimary()];
-        $this->_entityPrimaryToId[$primary] = $id;
-        if ($fromStore !== true) {
-            $this->_entitySaveList[] = $id;
+        if(!isset($this->_entities[$id])) {
+            $this->_entities[$id] = $entity;
+            $primary = $data[$entity->getPrimary()];
+            if(!isset($this->_entityPrimaryToId[$primary])) {
+                $this->_entityPrimaryToId[$primary] = $id;
+                if ($fromStore !== true) {
+                    $this->_entitySaveList[] = $id;
+                }
+            }
         }
-
         return $entity;
     }
 
@@ -103,7 +98,9 @@ class EntityManager implements SplSubject
     {
         if (isset($this->_entityPrimaryToId[$primary])) {
             $id = $this->_entityPrimaryToId[$primary];
-            return $this->_entities[$id];
+            if(isset($this->_entities[$id])) {
+                return $this->_entities[$id];
+            }
         }
         return null;
     }

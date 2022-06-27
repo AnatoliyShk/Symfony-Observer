@@ -61,6 +61,6 @@ class Helper
 
         var_dump($entityManager->getEntities());
 
-        var_dump($entityManager->findByPrimary('qws-6783'));
+        var_dump($entityManager->findByPrimary('hjg-3821'));
     }
 }

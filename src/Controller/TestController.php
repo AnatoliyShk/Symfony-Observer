@@ -2,12 +2,7 @@
 
 namespace App\Controller;
 
-use App\EntityManager;
-use App\Entity;
 use App\Helper;
-use App\InventoryItem;
-use App\Observers\InventoryObserver;
-use App\Observers\UpdateObserver;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 
