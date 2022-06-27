@@ -5,17 +5,16 @@ namespace App;
 
 
 //This class managed in-memory entities and commmunicates with the storage class (DataStore in our case).
+use App\Observers\InventoryObserver;
+use App\Observers\UpdateObserver;
 use SplObjectStorage;
 use SplSubject;
-use App\InventoryItem;
 use Symfony\Component\Mailer\MailerInterface;
 
 class EntityManager implements SplSubject
 {
 
     protected $_entities = array();
-
-    protected $_entityIdToPrimary = array();
 
     protected $_entityPrimaryToId = array();
 
@@ -27,8 +26,6 @@ class EntityManager implements SplSubject
 
     private $_observers = null;
 
-    private $_mailer = null;
-
     public function __construct(string $storePath)
     {
         $this->_observers = new SplObjectStorage();
@@ -36,6 +33,10 @@ class EntityManager implements SplSubject
         $this->_dataStore = new DataStore($storePath);
 
         $this->_nextId = 1;
+
+        $this->attach(new UpdateObserver());
+
+        $this->attach(new InventoryObserver());
 
         $itemTypes = $this->_dataStore->getItemTypes();
         foreach ($itemTypes as $itemType)
@@ -69,11 +70,9 @@ class EntityManager implements SplSubject
         $entity = new $entityName;
         $entity->_entityName = $entityName;
         $entity->_data = $data;
-        $entity->_em = Entity::getDefaultEntityManager();
         $id = $entity->_id = $this->_nextId++;
         $this->_entities[$id] = $entity;
         $primary = $data[$entity->getPrimary()];
-        $this->_entityIdToPrimary[$id] = $primary;
         $this->_entityPrimaryToId[$primary] = $id;
         if ($fromStore !== true) {
             $this->_entitySaveList[] = $id;
@@ -83,24 +82,8 @@ class EntityManager implements SplSubject
     }
 
     //update
-    public function update(Entity $entity, array $newData): Entity
+    public function update(?Entity $entity): ?Entity
     {
-        if ($newData === $entity->_data) {
-            //Nothing to do
-            return $entity;
-        }
-
-        $this->_entitySaveList[] = $entity->_id;
-        $oldPrimary = $entity->{$entity->getPrimary()};
-        $newPrimary = $newData[$entity->getPrimary()];
-        if ($oldPrimary != $newPrimary)
-        {
-            $this->_dataStore->delete(get_class($entity),$oldPrimary);
-            unset($this->_entityPrimaryToId[$oldPrimary]);
-            $this->_entityIdToPrimary[$entity->$id] = $newPrimary;
-            $this->_entityPrimaryToId[$newPrimary] = $entity->$id;
-        }
-        $entity->_data = $newData;
         $this->notify('update', $entity);
         return $entity;
     }
@@ -112,31 +95,39 @@ class EntityManager implements SplSubject
         $this->_entities[$id] = null;
         $primary = $entity->{$entity->getPrimary()};
         $this->_dataStore->delete(get_class($entity),$primary);
-        unset($this->_entityIdToPrimary[$id], $this->_entityPrimaryToId[$primary]);
-        return isset($this->_entityIdToPrimary[$id], $this->_entityPrimaryToId[$primary]);
+        unset($this->_entityPrimaryToId[$primary]);
+        return isset($this->_entityPrimaryToId[$primary]) && $this->_entities[$id] === null;
     }
 
-    public function findByPrimary(Entity $entity, string $primary): ?string
+    public function findByPrimary(string $primary): ?Entity
     {
         if (isset($this->_entityPrimaryToId[$primary])) {
             $id = $this->_entityPrimaryToId[$primary];
             return $this->_entities[$id];
-        } else {
-            return null;
         }
+        return null;
     }
 
     //Update the datastore to update itself and save.
     public function updateStore(): void {
         foreach($this->_entitySaveList as $id) {
             $entity = $this->_entities[$id];
-            $this->_dataStore->set(get_class($entity),$entity->{$entity->getPrimary()},$entity->_data);
+            $this->update($entity);
+            if($entity !== null) {
+                $this->_dataStore->set(get_class($entity), $entity->{$entity->getPrimary()}, $entity->_data);
+            }
         }
         $this->_dataStore->save();
     }
 
-    public function getMailer()
-    {
-        return $this->_mailer;
+    public function getEntities() {
+        $func = function($obj) {
+            if($obj !== null) {
+                $obj = $obj->toArray();
+            }
+            return $obj;
+        };
+        return array_map($func, $this->_entities);
     }
+
 }

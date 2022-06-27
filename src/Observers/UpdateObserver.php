@@ -14,8 +14,10 @@ class UpdateObserver implements SplObserver
     public function update(SplSubject $subject, string $event = null, $data = null)
     {
         $myfile = fopen("log.txt", "a") or die("Unable to open file!");
-        $txt = $event . " " . serialize($data->toArray()) . PHP_EOL;
-        fwrite($myfile, $txt);
-        fclose($myfile);
+        if ($data !== null) {
+            $txt = $event . " " . serialize($data->toArray()) . PHP_EOL;
+            fwrite($myfile, $txt);
+            fclose($myfile);
+        }
     }
 }

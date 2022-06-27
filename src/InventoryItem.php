@@ -7,49 +7,41 @@ namespace App;
 class InventoryItem extends Entity
 {
     //Update the number of items, because we have shipped some.
-    public function itemsHaveShipped($numberShipped)
+    public function itemsHaveShipped(int $numberShipped): self
     {
-        $current = $this->qoh;
-        $current -= $numberShipped;
-        $newData = $this->_data;
-        $newData['qoh'] = $current;
-        $this->update($newData);
+        $this->_data['qoh'] = $this->qoh - $numberShipped;
 
+        return $this;
     }
 
     //We received new items, update the count.
-    public function itemsReceived($numberReceived)
+    public function itemsReceived(int $numberReceived): self
     {
+        $this->_data['qoh'] += $numberReceived;
 
-        $newData = $this->_data;
-        $current = $this->qoh;
-
-        for($i = 1; $i <= $numberReceived; $i++) {
-            //notifyWareHouse();  //Not implemented yet.
-            $newData['qoh'] = $current++;
-        }
-        $this->update($newData);
+        return $this;
     }
 
-    public function changeSalePrice($salePrice)
+    public function changeSalePrice(string $salePrice): self
     {
-        $newData = $this->_data;
-        $newData['salePrice'] = $this->update($newData);
+        $this->_data['salePrice'] = $salePrice;
+
+        return $this;
     }
 
-    public function getMembers()
+    public function getMembers(): array
     {
         //These are the field in the underlying data array
-        return ["sku" => 1, "qoh" => 1, "cost" => 1, "salePrice" => 1];
+        return ["sku" => 1, "qoh" => 1, "cost" => 1, "salePrice" => '1'];
     }
 
-    public function getPrimary()
+    public function getPrimary(): string
     {
         //Which field constitutes the primary key in the storage class?
         return "sku";
     }
 
-    public function toArray() {
+    public function toArray(): array {
         return get_object_vars($this);
     }
 }
