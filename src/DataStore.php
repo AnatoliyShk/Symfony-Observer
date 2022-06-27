@@ -12,7 +12,7 @@ class DataStore
 
     protected $_dataStore = array();
 
-    public function __construct($storePath)
+    public function __construct(string $storePath)
     {
         $this->_storePath = $storePath;
         if (!file_exists($storePath)) {
@@ -40,14 +40,14 @@ class DataStore
     }
 
     //update the store with information
-    public function set($item, $primary, $data)
+    public function set(string $item, string $primary, array $data): void
     {
         $foundItem = null;
         $this->_dataStore[$item][$primary] = $data;
     }
 
     //get information
-    public function get($item, $primary)
+    public function get(string $item, string $primary): ?array
     {
         if (isset($this->_dataStore[$item][$primary])) {
             return $this->_dataStore[$item][$primary];
@@ -57,7 +57,7 @@ class DataStore
     }
 
     //delete an item.
-    public function delete($item, $primary)
+    public function delete(string $item, string $primary): void
     {
         if (isset($this->_dataStore[$item][$primary])) {
             unset($this->_dataStore[$item][$primary]);
@@ -65,7 +65,7 @@ class DataStore
     }
 
     //save everything
-    public function save()
+    public function save(): void
     {
         $result = file_put_contents($this->_storePath, serialize($this->_dataStore));
         if ($result === null) {
@@ -74,7 +74,7 @@ class DataStore
     }
 
     //Which types of items do we have stored
-    public function getItemTypes()
+    public function getItemTypes(): array
     {
         if (is_null($this->_dataStore)) {
             return array();
@@ -83,7 +83,7 @@ class DataStore
     }
 
     //get keys for an item-type, so we can loop over.
-    public function getItemKeys($itemType)
+    public function getItemKeys($itemType): array
     {
         return array_keys($this->_dataStore[$itemType]);
     }
